@@ -1,6 +1,3 @@
-import("Library.SCPLib", "SCPLib", 45);
-require("scp.nut");
-
 class CompanyValue extends GSController
 {
 	companies = null;
@@ -11,14 +8,20 @@ class CompanyValue extends GSController
 		days_taken = null
 	};
 	goal_value = GSController.GetSetting("goal_value") * 1000;
+	max_year = GSController.GetSetting("max_year");
+	
+	no_companies_since_tick = GSController.GetTick();
 
+	restart_inactivity_days = 365;
 	last_announcement_tick = 0;
 	restart_at_tick = null;
 	restart_annoucement_number = null;
 	restart_annoucement_intervals = [30, 20, 10, 5, 3, 2, 1];
+	restart_seconds_after_goal_reached = 30;
 	announce_interval = GSController.GetSetting("announce_interval"); // seconds
 
 	ms_per_tick = 27;
+	ticks_per_day = 74;
 
 	function Start();
 }
@@ -35,9 +38,37 @@ function CompanyValue::Start()
 				this.OnAdminCommand(adminCommand);
 			}
 		}
+		CheckForInactivity();
 		AnnounceRankings();
 	}
 }
+
+function CompanyValue::CheckForInactivity(){
+	local current_tick = GSController.GetTick();
+	if (GSDate.GetYear(GSDate.GetCurrentDate()) > this.max_year) {
+		GSGame.Pause();
+		GSAdmin.Send({type = "send_global", message = "Max year " + this.max_year.tostring() + " has been reached. Restarting the map!"});
+		GSAdmin.Send({type = "restart_map"});
+		return;
+	}
+	
+	if (getNumCompanies() == 0) {
+		if (this.no_companies_since_tick == null) {
+			this.no_companies_since_tick = current_tick;
+		} else {
+			local ticks_since_no_companies = current_tick - this.no_companies_since_tick;
+			local days_since_no_companies = ticks_since_no_companies / this.ticks_per_day;
+			if (days_since_no_companies >= this.restart_inactivity_days) {
+				GSGame.Pause();
+				GSAdmin.Send({type = "send_global", message = "No companies have been created for " + this.restart_inactivity_days.tostring() + " days. Restarting the map!"});
+				GSAdmin.Send({type = "restart_map"});
+			}
+		}
+	} else {
+		this.no_companies_since_tick = null;
+	}
+}
+
 
 function CompanyValue::OnAdminCommand(adminCommand) {
 	if(typeof adminCommand != "table") return;
@@ -50,26 +81,34 @@ function CompanyValue::OnAdminCommand(adminCommand) {
 			if (GSClient.ResolveClientID(player_id) == GSClient.CLIENT_INVALID) break;
 			local player_name = GSClient.GetName(player_id);
 			GSAdmin.Send({type = "send_private", player_id = player_id, message = "Welcome " + player_name + " to the server! The goal is to reach a company value of " + this.FormatMoney(this.goal_value, "EUR") + "!"});
+			GSAdmin.Send({type = "send_private", player_id = player_id, message = "Warning! Base costs are modified!"});
 			break;
 		default:
 			break;
 	}
 }
 
-function CompanyValue::DeclareWinner(company_id) {
+function CompanyValue::DeclareWinner(company_id, reached_goal) {
 	this.goal_reached = true;
 	this.goal_company.goal_value = GSCompany.GetQuarterlyCompanyValue(company_id, GSCompany.CURRENT_QUARTER);
 	this.goal_company.c_id = company_id;
-	// this.goal_company.days_taken = GSController.GetCurrentDay();
+	// this.goal_company.days_taken = GSController.GetTick() / this.ticks_per_day - company_creation_tick / this.ticks_per_day;
 
-	local seconds_until_restart = 30;
-	this.restart_at_tick = GSController.GetTick() + seconds_until_restart * (1000 / this.ms_per_tick);
+	this.restart_at_tick = GSController.GetTick() + this.restart_seconds_after_goal_reached * (1000 / this.ms_per_tick);
 	this.restart_annoucement_number = 0;
 
     local company_name = GSCompany.GetName(company_id);
-    local msg = company_name + " has reached the goal and won the game!";
+	local msg = "";
+	if (reached_goal) {
+		msg = company_name + " has reached the goal of " + this.FormatMoney(this.goal_value, "EUR") + " with " + this.FormatMoney(this.goal_company.goal_value, "EUR") + "!";
+	} else {
+		msg = "Max year " + this.max_year.tostring() + " has been reached. Winner is " + company_name + " with " + this.FormatMoney(this.goal_company.goal_value, "EUR") + "!";
+	}
 	GSAdmin.Send({type = "send_global", message = msg});
 	GSNews.Create(GSNews.NT_GENERAL, msg, GSCompany.COMPANY_INVALID);
+
+	msg = "The map will restart in " + this.restart_seconds_after_goal_reached.tostring() + " seconds!";
+	GSAdmin.Send({type = "send_global", message = msg});
 }
 
 
@@ -108,7 +147,12 @@ function CompanyValue::AnnounceRankings() {
 			});
 
 			if(rank_list[0].value > this.goal_value) {
-				DeclareWinner(rank_list[0].id);
+				DeclareWinner(rank_list[0].id, true);
+				return;
+			}
+
+			if (GSDate.GetYear(GSDate.GetCurrentDate()) > this.max_year) {
+				DeclareWinner(rank_list[0].id, false);
 				return;
 			}
 		}
@@ -149,4 +193,14 @@ function padLeft(str, targetLength, padChar = " ") {
         str = padChar + str;
     }
     return str;
+}
+
+function getNumCompanies() {
+	local count = 0;
+	for (local c_id = GSCompany.COMPANY_FIRST; c_id < GSCompany.COMPANY_LAST; c_id++) {
+		if (GSCompany.ResolveCompanyID(c_id) != GSCompany.COMPANY_INVALID) {
+			count++;
+		}
+	}
+	return count;
 }

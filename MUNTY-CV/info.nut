@@ -26,6 +26,18 @@ class CompanyValue extends GSInfo
             step_size = 250,
             flags = CONFIG_INGAME
         });
+        AddSetting({
+            name = "max_year", 
+            description = "Maximum year to reach the target company value",
+            min_value = 1900,
+            max_value = 2100,
+            easy_value = 2000,
+            medium_value = 1990,
+            hard_value = 1980,
+            custom_value = 1980,
+            step_size = 1,
+            flags = CONFIG_INGAME
+        });
 
         AddSetting({
             name = "announce_interval",
