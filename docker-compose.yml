@@ -3,12 +3,9 @@ services:
     image: ghcr.io/ropenttd/openttd:latest
     container_name: openttd-server
     ports:
-      # Expunem portul de joc pentru ca jucătorii să se poată conecta
       - "3979:3979/tcp"
       - "3979:3979/udp"
     volumes:
-      # Montăm folderul local openttd-data în container pentru a persista configurările/NewGRF-urile
-      - ./openttd-data:/home/openttd/.local/share/openttd
       - ./openttd-cfg:/config
     restart: unless-stopped
 
