@@ -1,7 +1,6 @@
 import time
 import json
 import threading
-import socket
 from pyopenttdadmin import Admin, AdminUpdateType, openttdpacket as p, Auth
 
 print("[Bot     ] Starting bot...")
