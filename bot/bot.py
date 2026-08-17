@@ -40,7 +40,7 @@ Admin.send_gamescript = send_to_gamescript
 
 
 password = "parola_sv"
-ip_address = "127.0.0.1"
+ip_address = "openttd-server"
 port_number = 3977
 
 auth = Auth(
