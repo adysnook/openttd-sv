@@ -115,8 +115,8 @@ while True:
     except Exception as e:
         print(f"[Bot     ] Connection timed out. {e}")
         
-    print("[Bot     ] Waiting 5 seconds")
-    time.sleep(5)
+    print("[Bot     ] Waiting 1 second")
+    time.sleep(1)
 
 print("[Bot     ] Connected")
 
