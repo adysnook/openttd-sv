@@ -1,10 +1,10 @@
 services:
   openttd-server:
     image: ghcr.io/ropenttd/openttd:latest
-    container_name: openttd-server
+    container_name: openttd-server-${INSTANCE_NAME}
     ports:
-      - "3979:3979/tcp"
-      - "3979:3979/udp"
+      - "${GAME_PORT}:${GAME_PORT}/tcp"
+      - "${GAME_PORT}:${GAME_PORT}/udp"
     volumes:
       - ./openttd-cfg:/config
     restart: unless-stopped
@@ -12,7 +12,7 @@ services:
   openttd-bot:
     build: 
       context: ./bot
-    container_name: openttd-bot
+    container_name: openttd-bot-${INSTANCE_NAME}
     depends_on:
       - openttd-server
     restart: unless-stopped
